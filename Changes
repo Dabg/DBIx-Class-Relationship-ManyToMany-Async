@@ -1,0 +1,5 @@
+Revision history for DBIx-Class-Relationship-ManyToMany-Async
+
+{{$NEXT}}
+        - Initial release (experimental).
+        - Async many_to_many accessors for DBIx::Class::Async:
