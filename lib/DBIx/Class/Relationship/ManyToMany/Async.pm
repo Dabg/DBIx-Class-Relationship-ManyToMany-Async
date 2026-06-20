@@ -150,12 +150,35 @@ sub many_to_many_async {
         my $set_meth    = "set_${meth}";
 
         # ── $meth — list accessor (returns Future → arrayref of targets) ──
-        # Single DB query: pivot rows with target prefetched via JOIN.
-        # Each $_->$f_rel returns a Future resolved from memory (no extra query).
+        # When prefetched data is available (via search_with_prefetch),
+        # uses the cached ResultSet directly — no extra DB queries.
+        # Otherwise falls back to the standard async chain.
         {
             my $meth_name = join '::', $class, $meth;
             *$meth_name = sub {
                 my $self = shift;
+
+                # Prefetched path: data already loaded via search_with_prefetch.
+                # Prefetched path: collapse => 1 stores nested data in
+                # _relationship_data (arrayref of raw hashrefs) or
+                # _prefetched (ResultSet with _entries).
+                my $rs = $self->{_relationship_data}{$rel}
+                      || $self->{_prefetched}{$rel};
+                if ($rs) {
+                    my $entries = ref $rs eq 'ARRAY' ? $rs : $rs->{_entries};
+                    my @targets;
+                    if ($entries && @$entries) {
+                        for my $entry (@$entries) {
+                            my $target = ref $entry eq 'HASH'
+                                ? $entry->{$f_rel}
+                                : undef;
+                            push @targets, $target if $target;
+                        }
+                    }
+                    return Future->done(\@targets);
+                }
+
+                # Standard async path
                 return $self->search_related($rel, {}, { prefetch => $f_rel })->all
                     ->then(sub {
                         my $pivot_rows = shift;
