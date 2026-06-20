@@ -171,7 +171,7 @@ sub many_to_many_async {
                         for my $entry (@$entries) {
                             my $target = ref $entry eq 'HASH'
                                 ? $entry->{$f_rel}
-                                : undef;
+                                : eval { $entry->$f_rel };
                             push @targets, $target if $target;
                         }
                     }
@@ -247,6 +247,13 @@ sub many_to_many_async {
                 });
             };
         }
+    }
+    {
+        no strict 'refs';
+        # Store in a package variable so workers (forked processes)
+        # inherit the metadata correctly without triggering reload issues.
+        ${ $class . '::_fondation_many_to_many' }{$meth}
+            = { rel => $rel, f_rel => $f_rel };
     }
 }
 
