@@ -9,7 +9,6 @@ use warnings;
 use Future;
 use Exporter 'import';
 
-our $VERSION = '0.01';
 our @EXPORT = qw(many_to_many_async);
 
 =head1 STATUS
